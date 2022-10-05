@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "compatibilityLevel": "JAVA_8",
+  "package": "me.third.right.pluginBase.sampleMixin",
+  "refmap": "mixins.sample.refmap.json",
+  "minVersion": "0.4-SNAPSHOT",
+  "priority": 2147483645,
+  "mixinPriority": 2147483645,
+  "client": [
+    "MixinGuiMultiplayer"
+  ]
+}
