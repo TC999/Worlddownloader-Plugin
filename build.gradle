@@ -118,7 +118,7 @@ shadowJar {
 
 mixin {
     defaultObfuscationEnv searge
-    add sourceSets.main, 'mixins.sample.refmap.json'
+    add sourceSets.main, 'mixins.WDLPlugin.refmap.json'
 }
 
 reobf {
@@ -131,8 +131,8 @@ reobf {
 jar {
     manifest {
         attributes(
-                'Main': 'me.third.right.pluginBase.Main',
-                'Mixin': 'mixins.sample.json'
+                'Main': 'me.third.right.worldDownloader.Main',
+                'Mixin': 'mixins.WDLPlugin.json',
         )
     }
 }
