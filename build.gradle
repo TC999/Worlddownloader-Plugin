@@ -82,6 +82,11 @@ dependencies {//
     }
 
     implementation(files("Libs/WurstMinus-Two-4.3-release.jar"))//This must point to the Wurst-2 Jar
+
+    compile 'org.jetbrains.xodus:xodus-openAPI:2.0.1'
+    compile 'org.jetbrains.xodus:xodus-environment:2.0.1'
+    compile 'org.jetbrains.xodus:xodus-entity-store:2.0.1'
+    compile 'org.jetbrains.xodus:xodus-vfs:2.0.1'
 }
 
 processResources {

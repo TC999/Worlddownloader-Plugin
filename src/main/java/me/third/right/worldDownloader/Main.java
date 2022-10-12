@@ -6,7 +6,7 @@ import me.third.right.modules.Hack;
 import me.third.right.plugins.PluginBase;
 import me.third.right.worldDownloader.hacks.WorldDownloader;
 
-@PluginBase.PluginInfo(name = "PluginBase", author = "ThirdRight")
+@PluginBase.PluginInfo(name = "WorldDownloader", author = "ThirdRight", version = "1.1")
 public class Main extends PluginBase {
 
     @Override

@@ -1,14 +1,18 @@
 package me.third.right.worldDownloader.hacks;
 
-import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import me.bush.eventbus.annotation.EventListener;
 import me.third.right.ThirdMod;
 import me.third.right.events.client.PacketEvent;
 import me.third.right.events.client.TickEvent;
 import me.third.right.modules.Hack;
 import me.third.right.modules.HackStandard;
+import me.third.right.settings.setting.CheckboxSetting;
+import me.third.right.settings.setting.EnumSetting;
+import me.third.right.settings.setting.StringSetting;
 import me.third.right.utils.client.enums.Category;
+import me.third.right.utils.client.utils.ChatUtils;
 import me.third.right.utils.client.utils.LoggerUtils;
+import me.third.right.worldDownloader.managers.DatabaseManager;
 import me.third.right.worldDownloader.mixins.IChunkProviderClient;
 import me.third.right.worldDownloader.utils.AnvilChunkWDL;
 import net.minecraft.block.Block;
@@ -28,8 +32,6 @@ import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-@Hack.DontSaveState
-@Hack.DisableOnDisconnect
 @Hack.HackInfo(name = "WorldDownloader", description = "Downloads the world you are in", category = Category.OTHER)
 public class WorldDownloader extends HackStandard {
     //TODO add world downloader
@@ -39,7 +41,21 @@ public class WorldDownloader extends HackStandard {
     private SaveHandler saveHandler;
     private int newChunks = 0;
     private int maxChunks = 0;
+    private boolean isDownloading = false;
+    private String serverIP = "";
+    private DatabaseManager databaseManager;
+    private enum NameType { Name, ServerIP, Both }
+    private enum Page { WorldDownloader, Database }
     //Settings
+    private final EnumSetting<Page> page = setting(new EnumSetting<>("Page", Page.values(), Page.WorldDownloader));
+    // * WorldDownloader
+    private final EnumSetting<NameType> nameType = setting(new EnumSetting<>("NameType", "The name given to the world that's being downloaded.", NameType.values(), NameType.Name, X -> !page.getSelected().equals(Page.WorldDownloader)));
+    private final StringSetting worldName = setting(new StringSetting("WorldName", "The name of the world that's being downloaded.", "WorldDownloader", s -> nameType.getSelected().equals(NameType.ServerIP) || !page.getSelected().equals(Page.WorldDownloader)));
+
+    // * Database
+    private final CheckboxSetting useDatabase = setting(new CheckboxSetting("UseDatabase", "Whether or not to use the database. Stores more data about chunks.", false, X -> !page.getSelected().equals(Page.Database)));
+    private final CheckboxSetting saveNewChunks = setting(new CheckboxSetting("SaveNewChunks", "Logs the new chunks into a database.", false, X -> !useDatabase.isChecked() || !page.getSelected().equals(Page.Database)));
+    private final CheckboxSetting saveBlockCounts = setting(new CheckboxSetting("SaveBlockCounts", "Saves the block counts of the chunks.", false, X -> !useDatabase.isChecked() || !page.getSelected().equals(Page.Database)));
 
     //Overrides
 
@@ -47,7 +63,6 @@ public class WorldDownloader extends HackStandard {
     public void onEnable() {
         ThirdMod.EVENT_PROCESSOR.subscribe(this);
         if(nullCheck()) {
-            disable();
             return;
         }
 
@@ -63,20 +78,27 @@ public class WorldDownloader extends HackStandard {
     }
 
     @Override
-    public void onClose() {
-        stopDownload();
-    }
-
-    @Override
     public String setHudInfo() {
-        return String.format("%s/%s", newChunks, maxChunks);
+        return String.format("DL: %s | %s/%s", isDownloading, newChunks, maxChunks);
     }
 
     //Events
 
     @EventListener
     public void onTick(TickEvent event) {
-        if(nullCheck()) return;
+        if(nullCheck()) {
+            isDownloading = false;
+            return;
+        }
+
+        isDownloading = true;
+
+        final String currentServerIP = ChatUtils.getFormattedServerIP();
+        if(!serverIP.equals(currentServerIP)) {
+            serverIP = currentServerIP;
+            startDownload();
+        }
+
         maxChunks = (mc.gameSettings.renderDistanceChunks * 16) / 4;
     }
 
@@ -85,30 +107,38 @@ public class WorldDownloader extends HackStandard {
         if(nullCheck()) return;
 
         if(event.getPacket() instanceof SPacketChunkData) {
+            final SPacketChunkData packet = (SPacketChunkData) event.getPacket();
             newChunks++;
 
             if(newChunks > maxChunks) {
                 newChunks = 0;
-                try {
-                    saveChunks();
-                } catch (NullPointerException e) {
-                    LoggerUtils.logDebug("Failed at packet event.");
-                }
+                saveChunks();
+            }
+
+            if(!packet.isFullChunk() && useDatabase.isChecked() && saveNewChunks.isChecked()) {
+                databaseManager.storeNewChunk(packet.getChunkX(), packet.getChunkZ());
             }
         }
-
     }
 
     //Methods
 
     public void startDownload() {
-        saveHandler = (SaveHandler) mc.getSaveLoader().getSaveLoader("world", true);
+        databaseManager = new DatabaseManager(serverIP);
+        if(!isDownloading) return;
+        newChunks = 0;
+        serverIP = ChatUtils.getFormattedServerIP();
+        saveHandler = (SaveHandler) mc.getSaveLoader().getSaveLoader(getWorldName(), true);
         anvilChunkWDL = AnvilChunkWDL.create(saveHandler, mc.world.provider);
     }
 
     public void stopDownload() {
+        if(!isDownloading) return;
         if(nullCheck()) {
-            LoggerUtils.moduleLog(this, "Potentially threw away a lot of data, cause you didn't stop the download before closing the game.");
+            LoggerUtils.moduleLog(this, "Potentially threw away a lot of data, cause you didn't stop the downloader before closing the game.");
+            saveHandler = null;
+            anvilChunkWDL = null;
+            System.gc();//Prob not needed.
             return;
         }
         saveWorld();
@@ -116,6 +146,19 @@ public class WorldDownloader extends HackStandard {
         saveHandler.flush();
     }
 
+    public String getWorldName() {
+        switch (nameType.getSelected()) {
+            case Name:
+                return worldName.getString();
+            case ServerIP:
+                if(nullCheck()) return "IP_LOST";
+                return ChatUtils.getFormattedServerIP();
+            case Both:
+                return String.format("%s_%s", worldName.getString(), nullCheck() ? "IP_LOST" : ChatUtils.getFormattedServerIP());
+            default:
+                return "WorldDownloader";
+        }
+    }
 
     public void saveWorld() {
         NBTTagCompound playerNBT = savePlayer();
@@ -130,16 +173,21 @@ public class WorldDownloader extends HackStandard {
         }
     }
 
-    public void saveChunks() {
+    public void saveChunks() {//NullPointException somewhere in here
         final ChunkProviderClient chunkProvider = mc.world.getChunkProvider();
+        final List<Chunk> chunks;
 
-        final List<Chunk> chunks = new ArrayList<>(((IChunkProviderClient)chunkProvider).getLoadedChunks().values());
+        try {
+            chunks = new ArrayList<>(((IChunkProviderClient) chunkProvider).getLoadedChunks().values());
+        } catch (NullPointerException e) {
+            e.printStackTrace();
+            return;
+        }
+
         if(chunks.isEmpty()) {
             LoggerUtils.logDebug("No chunks to save");
             return;
         }
-
-        LoggerUtils.logDebug("Chunks size: "+chunks.size());
 
         for(Chunk chunk : chunks) {
 
@@ -151,6 +199,10 @@ public class WorldDownloader extends HackStandard {
             if(isChunkEmpty(chunk)) {
                 LoggerUtils.logDebug("Chunk is empty");
                 continue;
+            }
+
+            if(useDatabase.isChecked() && saveBlockCounts.isChecked()) {
+                databaseManager.storeChunkInfo(chunk);
             }
 
             try {
@@ -226,10 +278,9 @@ public class WorldDownloader extends HackStandard {
         }
     }
 
-    public static void applyOverridesToWorldInfo(NBTTagCompound worldInfoNBT, NBTTagCompound rootWorldInfoNBT) {//TODO automate this and add settings for this.
+    public void applyOverridesToWorldInfo(NBTTagCompound worldInfoNBT, NBTTagCompound rootWorldInfoNBT) {//TODO automate this and add settings for this.
         // LevelName
-        String worldName = "world";//TODO add StringSetting to chnage world name
-        worldInfoNBT.setString("LevelName", worldName);
+        worldInfoNBT.setString("LevelName", getWorldName());
         // Cheats
         worldInfoNBT.setBoolean("allowCommands", true);
         // GameType

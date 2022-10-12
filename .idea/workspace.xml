@@ -5,26 +5,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="71904ee0-803f-4d57-9c69-c9e77a77a07e" name="Changes" comment="Hello, World!">
-      <change afterPath="$PROJECT_DIR$/.idea/.name" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/uiDesigner.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Libs/WurstMinus-Two-4.3-release.jar" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/hacks/WorldDownloader.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/mixins/IAnvilChunkLoader.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/mixins/IChunkProviderClient.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/utils/AnvilChunkWDL.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/resources/mixins.WDLPlugin.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/managers/DatabaseManager.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/build.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/build.gradle" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gradle.properties" beforeDir="false" afterPath="$PROJECT_DIR$/gradle.properties" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/settings.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/settings.gradle" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/third/right/pluginBase/Main.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/Main.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/third/right/pluginBase/SampleCommand.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/third/right/pluginBase/SampleHack.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/third/right/pluginBase/SampleHud.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/third/right/pluginBase/sampleMixin/MixinGuiMultiplayer.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/mixins.sample.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/Main.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/Main.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/hacks/WorldDownloader.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/hacks/WorldDownloader.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/utils/AnvilChunkWDL.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/utils/AnvilChunkWDL.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -89,7 +75,14 @@
       <option name="project" value="LOCAL" />
       <updated>1664996257112</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="Hello, World!">
+      <created>1665476536380</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1665476536380</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
