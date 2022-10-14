@@ -12,6 +12,7 @@ import me.third.right.settings.setting.StringSetting;
 import me.third.right.utils.client.enums.Category;
 import me.third.right.utils.client.utils.ChatUtils;
 import me.third.right.utils.client.utils.LoggerUtils;
+import me.third.right.worldDownloader.managers.ChunkImagerManager;
 import me.third.right.worldDownloader.managers.DatabaseManager;
 import me.third.right.worldDownloader.mixins.IChunkProviderClient;
 import me.third.right.worldDownloader.utils.AnvilChunkWDL;
@@ -34,9 +35,8 @@ import java.util.List;
 
 @Hack.HackInfo(name = "WorldDownloader", description = "Downloads the world you are in", category = Category.OTHER)
 public class WorldDownloader extends HackStandard {
-    //TODO add world downloader
-    //TODO add world database (When chunk has been saved, Block counts, etc)
     //Vars
+    public static WorldDownloader INSTANCE;
     private AnvilChunkWDL anvilChunkWDL;
     private SaveHandler saveHandler;
     private int newChunks = 0;
@@ -44,8 +44,9 @@ public class WorldDownloader extends HackStandard {
     private boolean isDownloading = false;
     private String serverIP = "";
     private DatabaseManager databaseManager;
+    private ChunkImagerManager chunkImagerManager;
     private enum NameType { Name, ServerIP, Both }
-    private enum Page { WorldDownloader, Database }
+    private enum Page { WorldDownloader, Database, ChunkImager }
     //Settings
     private final EnumSetting<Page> page = setting(new EnumSetting<>("Page", Page.values(), Page.WorldDownloader));
     // * WorldDownloader
@@ -57,7 +58,13 @@ public class WorldDownloader extends HackStandard {
     private final CheckboxSetting saveNewChunks = setting(new CheckboxSetting("SaveNewChunks", "Logs the new chunks into a database.", false, X -> !useDatabase.isChecked() || !page.getSelected().equals(Page.Database)));
     private final CheckboxSetting saveBlockCounts = setting(new CheckboxSetting("SaveBlockCounts", "Saves the block counts of the chunks.", false, X -> !useDatabase.isChecked() || !page.getSelected().equals(Page.Database)));
 
+    // * Imager
+    private final CheckboxSetting useImager = setting(new CheckboxSetting("UseImager", "Whether or not to use the imager. Creates images of the chunks.", false, X -> !page.getSelected().equals(Page.ChunkImager)));
+
     //Overrides
+    public WorldDownloader() {
+        INSTANCE = this;
+    }
 
     @Override
     public void onEnable() {
@@ -66,6 +73,8 @@ public class WorldDownloader extends HackStandard {
             return;
         }
 
+        serverIP = ChatUtils.getFormattedServerIP();
+        maxChunks = (mc.gameSettings.renderDistanceChunks * 16) / 4;
         startDownload();
     }
 
@@ -89,14 +98,14 @@ public class WorldDownloader extends HackStandard {
         if(nullCheck()) {
             isDownloading = false;
             return;
+        } else {
+            isDownloading = true;
         }
-
-        isDownloading = true;
 
         final String currentServerIP = ChatUtils.getFormattedServerIP();
         if(!serverIP.equals(currentServerIP)) {
             serverIP = currentServerIP;
-            startDownload();
+            startDownload();//Rebuild everything
         }
 
         maxChunks = (mc.gameSettings.renderDistanceChunks * 16) / 4;
@@ -115,8 +124,10 @@ public class WorldDownloader extends HackStandard {
                 saveChunks();
             }
 
-            if(!packet.isFullChunk() && useDatabase.isChecked() && saveNewChunks.isChecked()) {
-                databaseManager.storeNewChunk(packet.getChunkX(), packet.getChunkZ());
+            if(useDatabase.isChecked() && isDownloading) {
+                if(!packet.isFullChunk() && saveNewChunks.isChecked()) {
+                    databaseManager.storeNewChunk(packet.getChunkX(), packet.getChunkZ());
+                }
             }
         }
     }
@@ -124,15 +135,20 @@ public class WorldDownloader extends HackStandard {
     //Methods
 
     public void startDownload() {
+        if(databaseManager != null) {
+            databaseManager.disconnect();
+            databaseManager = null;
+        }
         databaseManager = new DatabaseManager(serverIP);
-        if(!isDownloading) return;
+        chunkImagerManager = new ChunkImagerManager(serverIP);
         newChunks = 0;
         serverIP = ChatUtils.getFormattedServerIP();
         saveHandler = (SaveHandler) mc.getSaveLoader().getSaveLoader(getWorldName(), true);
         anvilChunkWDL = AnvilChunkWDL.create(saveHandler, mc.world.provider);
+        System.gc();
     }
 
-    public void stopDownload() {
+    public void stopDownload() {//TODO add a first time check create all the player data in the world folder then downloader and update the player data when stopped properly.
         if(!isDownloading) return;
         if(nullCheck()) {
             LoggerUtils.moduleLog(this, "Potentially threw away a lot of data, cause you didn't stop the downloader before closing the game.");
@@ -144,6 +160,10 @@ public class WorldDownloader extends HackStandard {
         saveWorld();
         mc.getSaveLoader().flushCache();
         saveHandler.flush();
+    }
+
+    public DatabaseManager getDatabaseManager() {
+        return databaseManager;
     }
 
     public String getWorldName() {
@@ -185,24 +205,33 @@ public class WorldDownloader extends HackStandard {
         }
 
         if(chunks.isEmpty()) {
-            LoggerUtils.logDebug("No chunks to save");
             return;
         }
 
         for(Chunk chunk : chunks) {
 
             if(chunk == null) {
-                LoggerUtils.logDebug("Chunk is null");
                 continue;
             }
 
             if(isChunkEmpty(chunk)) {
-                LoggerUtils.logDebug("Chunk is empty");
                 continue;
             }
 
-            if(useDatabase.isChecked() && saveBlockCounts.isChecked()) {
-                databaseManager.storeChunkInfo(chunk);
+            try {
+                if (useDatabase.isChecked() && saveBlockCounts.isChecked() && databaseManager != null) {
+                    databaseManager.storeChunkInfo(chunk);
+                }
+            } catch (NullPointerException e) {
+                e.printStackTrace();
+            }
+
+            try {
+                if (useImager.isChecked() && chunkImagerManager != null) {
+                    chunkImagerManager.chunkToImage(chunk);
+                }
+            } catch (NullPointerException e) {
+                e.printStackTrace();
             }
 
             try {
@@ -213,7 +242,7 @@ public class WorldDownloader extends HackStandard {
         }
     }
 
-    private boolean isChunkEmpty(Chunk chunk) {
+    public static boolean isChunkEmpty(Chunk chunk) {
         if (chunk.isEmpty() || chunk instanceof EmptyChunk) {
             return true;
         }
