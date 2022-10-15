@@ -14,6 +14,6 @@ public class PerformanceElement extends Hud {
 
     @Override
     public void onRender() {
-        drawString(String.format("RenderTime: %sms", PerformanceTracker.getAverage()), getX(), getY(), guiHud.getRGBInt());
+        drawString(String.format("RenderTime: Avg: %sms Highest: %sms New: %s", PerformanceTracker.getAverage(), PerformanceTracker.getHighest(), PerformanceTracker.getNewest()), getX(), getY(), guiHud.getRGBInt());
     }
 }

@@ -9,6 +9,8 @@ import me.third.right.worldDownloader.utils.CImagerRunnable;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.chunk.Chunk;
 
+import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -63,6 +65,33 @@ public class ChunkImagerManager {
             if(!queue.isEmpty()) {
                 threadManager.submit(queue.poll());
             }
+        }
+    }
+
+    public File getImage(int chunkX, int chunkZ) {
+        return getImage(chunkX, chunkZ, mc.player.dimension);
+    }
+
+    public File getImage(int chunkX, int chunkZ, int dimension) {
+        final File file;
+        switch (dimension) {
+            case 0:
+                file = imagePathDir.resolve(serverIP).resolve("Overworld").resolve(chunkX + "," + chunkZ + ".png").toFile();
+                break;
+            case -1:
+                file = imagePathDir.resolve(serverIP).resolve("Nether").resolve(chunkX + "," + chunkZ + ".png").toFile();
+                break;
+            case 1:
+                file = imagePathDir.resolve(serverIP).resolve("End").resolve(chunkX + "," + chunkZ + ".png").toFile();
+                break;
+            default:
+                return null;
+        }
+
+        if(Files.exists(file.toPath())) {
+            return file;
+        } else {
+            return null;
         }
     }
 }

@@ -57,7 +57,7 @@ public class AnvilChunkWDL extends AnvilChunkLoader {
     }
 
     @Override
-    public void saveChunk(World world, Chunk chunk) throws MinecraftException, IOException {
+    public void saveChunk(World world, Chunk chunk) throws MinecraftException {
         world.checkSessionLock();
 
         NBTTagCompound levelTag = writeChunkToNBT(chunk, world);

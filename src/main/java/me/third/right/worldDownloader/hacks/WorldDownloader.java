@@ -165,6 +165,7 @@ public class WorldDownloader extends HackStandard {
     public DatabaseManager getDatabaseManager() {
         return databaseManager;
     }
+    public ChunkImagerManager getChunkImagerManager() {return chunkImagerManager;}
 
     public String getWorldName() {
         switch (nameType.getSelected()) {
@@ -224,6 +225,7 @@ public class WorldDownloader extends HackStandard {
                 }
             } catch (NullPointerException e) {
                 e.printStackTrace();
+                break;
             }
 
             try {
@@ -232,12 +234,14 @@ public class WorldDownloader extends HackStandard {
                 }
             } catch (NullPointerException e) {
                 e.printStackTrace();
+                break;
             }
 
             try {
                 anvilChunkWDL.saveChunk(mc.world, chunk);
             } catch (Exception e) {
                 e.printStackTrace();
+                break;
             }
         }
     }
@@ -271,7 +275,7 @@ public class WorldDownloader extends HackStandard {
 
     private void saveWorldInfo(NBTTagCompound playerInfoNBT) {
 
-        mc.world.getWorldInfo().setSaveVersion(19133);//19133 1343
+        mc.world.getWorldInfo().setSaveVersion(19133);
 
         NBTTagCompound worldInfoNBT = mc.world.getWorldInfo().cloneNBTCompound(playerInfoNBT);
         NBTTagCompound rootWorldInfoNBT = new NBTTagCompound();
