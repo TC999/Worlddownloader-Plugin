@@ -15,6 +15,8 @@ import java.nio.file.Path;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import static me.third.right.worldDownloader.utils.ChunkUtils.isChunkEmpty;
+
 public class ChunkImagerManager {
     protected Minecraft mc = Minecraft.getMinecraft();
     protected ThreadManager threadManager = ThreadManager.INSTANCE;
@@ -25,13 +27,26 @@ public class ChunkImagerManager {
     public ChunkImagerManager(String serverIP) {
         this.serverIP = serverIP;
         imagePathDir = ThirdMod.configFolder.resolve("ChunkImages");
-        //TODO add mass folder check.
-        FileUtils.folderExists(imagePathDir);
-        FileUtils.folderExists(imagePathDir.resolve(serverIP));
-        FileUtils.folderExists(imagePathDir.resolve(serverIP).resolve("Overworld"));
-        FileUtils.folderExists(imagePathDir.resolve(serverIP).resolve("Nether"));
-        FileUtils.folderExists(imagePathDir.resolve(serverIP).resolve("End"));
+        FileUtils.folderExists(
+                imagePathDir,
+                imagePathDir.resolve(serverIP),
+                imagePathDir.resolve(serverIP).resolve("Overworld"),
+                imagePathDir.resolve(serverIP).resolve("Nether"),
+                imagePathDir.resolve(serverIP).resolve("End")
+        );
         ThirdMod.EVENT_PROCESSOR.subscribe(this);
+    }
+
+    public void chunkToImageFiltered(Chunk chunk) {
+        if(chunk == null) {
+            return;
+        }
+
+        if(isChunkEmpty(chunk)) {
+            return;
+        }
+
+        chunkToImage(chunk);
     }
 
     public void chunkToImage(Chunk chunk) {
@@ -60,7 +75,7 @@ public class ChunkImagerManager {
 
     @EventListener
     public void onTick(TickEvent event) {
-        if(mc.player == null || mc.world == null) return;
+        if(mc.player == null || mc.world == null || threadManager == null) return;
         if(threadManager.getQueueSize() < threadManager.getPoolSize() * 2) {
             if(!queue.isEmpty()) {
                 threadManager.submit(queue.poll());

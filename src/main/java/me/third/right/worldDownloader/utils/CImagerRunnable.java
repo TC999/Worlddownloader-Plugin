@@ -19,7 +19,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
 
-import static me.third.right.worldDownloader.hacks.WorldDownloader.isChunkEmpty;
+import static me.third.right.worldDownloader.utils.ChunkUtils.isChunkEmpty;
 
 public class CImagerRunnable implements Runnable {
     protected final Minecraft mc = Minecraft.getMinecraft();
@@ -62,7 +62,8 @@ public class CImagerRunnable implements Runnable {
                         continue;
                     }
                     //TODO add Nether but split the chunk it layered segments.
-
+                    //TODO Lighting.
+                    //TODO add carpet colours.
                     if(BlockUtils.isSolid(block)) {
                         MapColor mapColor = state.getMapColor(chunk.getWorld(), pos);
                         int colour = mapColor.colorValue;

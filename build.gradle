@@ -140,6 +140,7 @@ jar {
         attributes(
                 'Main': 'me.third.right.worldDownloader.Main',
                 'Mixin': 'mixins.WDLPlugin.json',
+                'TargetVersion': '4.4',
         )
     }
 }

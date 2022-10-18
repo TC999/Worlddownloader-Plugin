@@ -12,19 +12,15 @@ import me.third.right.settings.setting.StringSetting;
 import me.third.right.utils.client.enums.Category;
 import me.third.right.utils.client.utils.ChatUtils;
 import me.third.right.utils.client.utils.LoggerUtils;
-import me.third.right.worldDownloader.managers.ChunkImagerManager;
 import me.third.right.worldDownloader.managers.DatabaseManager;
 import me.third.right.worldDownloader.mixins.IChunkProviderClient;
 import me.third.right.worldDownloader.utils.AnvilChunkWDL;
-import net.minecraft.block.Block;
 import net.minecraft.client.multiplayer.ChunkProviderClient;
 import net.minecraft.nbt.*;
 import net.minecraft.network.play.server.SPacketChunkData;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.chunk.Chunk;
-import net.minecraft.world.chunk.EmptyChunk;
-import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import net.minecraft.world.storage.SaveHandler;
 import net.minecraft.world.storage.ThreadedFileIOBase;
 
@@ -32,6 +28,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.List;
+
+import static me.third.right.worldDownloader.utils.ChunkUtils.isChunkEmpty;
 
 @Hack.HackInfo(name = "WorldDownloader", description = "Downloads the world you are in", category = Category.OTHER)
 public class WorldDownloader extends HackStandard {
@@ -44,9 +42,9 @@ public class WorldDownloader extends HackStandard {
     private boolean isDownloading = false;
     private String serverIP = "";
     private DatabaseManager databaseManager;
-    private ChunkImagerManager chunkImagerManager;
+
     private enum NameType { Name, ServerIP, Both }
-    private enum Page { WorldDownloader, Database, ChunkImager }
+    private enum Page { WorldDownloader, Database }
     //Settings
     private final EnumSetting<Page> page = setting(new EnumSetting<>("Page", Page.values(), Page.WorldDownloader));
     // * WorldDownloader
@@ -57,9 +55,6 @@ public class WorldDownloader extends HackStandard {
     private final CheckboxSetting useDatabase = setting(new CheckboxSetting("UseDatabase", "Whether or not to use the database. Stores more data about chunks.", false, X -> !page.getSelected().equals(Page.Database)));
     private final CheckboxSetting saveNewChunks = setting(new CheckboxSetting("SaveNewChunks", "Logs the new chunks into a database.", false, X -> !useDatabase.isChecked() || !page.getSelected().equals(Page.Database)));
     private final CheckboxSetting saveBlockCounts = setting(new CheckboxSetting("SaveBlockCounts", "Saves the block counts of the chunks.", false, X -> !useDatabase.isChecked() || !page.getSelected().equals(Page.Database)));
-
-    // * Imager
-    private final CheckboxSetting useImager = setting(new CheckboxSetting("UseImager", "Whether or not to use the imager. Creates images of the chunks.", false, X -> !page.getSelected().equals(Page.ChunkImager)));
 
     //Overrides
     public WorldDownloader() {
@@ -140,7 +135,6 @@ public class WorldDownloader extends HackStandard {
             databaseManager = null;
         }
         databaseManager = new DatabaseManager(serverIP);
-        chunkImagerManager = new ChunkImagerManager(serverIP);
         newChunks = 0;
         serverIP = ChatUtils.getFormattedServerIP();
         saveHandler = (SaveHandler) mc.getSaveLoader().getSaveLoader(getWorldName(), true);
@@ -165,7 +159,6 @@ public class WorldDownloader extends HackStandard {
     public DatabaseManager getDatabaseManager() {
         return databaseManager;
     }
-    public ChunkImagerManager getChunkImagerManager() {return chunkImagerManager;}
 
     public String getWorldName() {
         switch (nameType.getSelected()) {
@@ -229,48 +222,12 @@ public class WorldDownloader extends HackStandard {
             }
 
             try {
-                if (useImager.isChecked() && chunkImagerManager != null) {
-                    chunkImagerManager.chunkToImage(chunk);
-                }
-            } catch (NullPointerException e) {
-                e.printStackTrace();
-                break;
-            }
-
-            try {
                 anvilChunkWDL.saveChunk(mc.world, chunk);
             } catch (Exception e) {
                 e.printStackTrace();
                 break;
             }
         }
-    }
-
-    public static boolean isChunkEmpty(Chunk chunk) {
-        if (chunk.isEmpty() || chunk instanceof EmptyChunk) {
-            return true;
-        }
-
-        final ExtendedBlockStorage[] array = chunk.getBlockStorageArray();
-        for (int i = 1; i < array.length; i++) {
-            if (array[i] != Chunk.NULL_BLOCK_STORAGE) {
-                return false;
-            }
-        }
-        if (array[0] != Chunk.NULL_BLOCK_STORAGE) {
-            for (int y = 0; y < 16; y++) {
-                for (int z = 0; z < 16; z++) {
-                    for (int x = 0; x < 16; x++) {
-                        int id = Block.getStateId(array[0].get(x, y, z));
-                        id = (id & 0xFFF) << 4 | (id & 0xF000) >> 12;
-                        if ((id > 0x00F) && (id < 0x1A0 || id > 0x1AF)) {
-                            return false;
-                        }
-                    }
-                }
-            }
-        }
-        return false;
     }
 
     private void saveWorldInfo(NBTTagCompound playerInfoNBT) {

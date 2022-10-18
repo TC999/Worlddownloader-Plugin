@@ -7,15 +7,11 @@ import me.third.right.utils.client.utils.LoggerUtils;
 import me.third.right.utils.client.utils.MathUtils;
 import me.third.right.worldDownloader.Main;
 import me.third.right.worldDownloader.hacks.WorldDownloader;
-import me.third.right.worldDownloader.managers.DatabaseManager;
 import me.third.right.worldDownloader.utils.ValueStore;
 import org.apache.commons.lang3.time.StopWatch;
 import org.javacord.api.entity.message.embed.EmbedBuilder;
 import org.javacord.api.event.message.MessageCreateEvent;
 
-import java.math.BigInteger;
-import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
