@@ -1,9 +1,8 @@
 package me.third.right.worldDownloader.managers;
 
-import me.bush.eventbus.annotation.EventListener;
 import me.third.right.ThirdMod;
-import me.third.right.events.client.TickEvent;
 import me.third.right.utils.client.manage.ThreadManager;
+import me.third.right.utils.client.utils.ChatUtils;
 import me.third.right.utils.client.utils.FileUtils;
 import me.third.right.worldDownloader.utils.CImagerRunnable;
 import net.minecraft.client.Minecraft;
@@ -19,13 +18,13 @@ import static me.third.right.worldDownloader.utils.ChunkUtils.isChunkEmpty;
 
 public class ChunkImagerManager {
     protected Minecraft mc = Minecraft.getMinecraft();
-    protected ThreadManager threadManager = ThreadManager.INSTANCE;
-    private final String serverIP;
-    private final Path imagePathDir;
+    protected ThreadManager threadManager;
+    private String serverIP = "";
+    private Path imagePathDir;
     private final Queue<CImagerRunnable> queue = new ConcurrentLinkedQueue<>();
 
-    public ChunkImagerManager(String serverIP) {
-        this.serverIP = serverIP;
+    public void init() {
+        threadManager = ThreadManager.INSTANCE;
         imagePathDir = ThirdMod.configFolder.resolve("ChunkImages");
         FileUtils.folderExists(
                 imagePathDir,
@@ -34,18 +33,29 @@ public class ChunkImagerManager {
                 imagePathDir.resolve(serverIP).resolve("Nether"),
                 imagePathDir.resolve(serverIP).resolve("End")
         );
-        ThirdMod.EVENT_PROCESSOR.subscribe(this);
+        queue.clear();
+    }
+
+    public void onTick() {
+        if(mc.player == null || mc.world == null) return;
+
+        final String currentServerIP = ChatUtils.getFormattedServerIP();
+        if(currentServerIP.isEmpty()) return;
+
+        if(!serverIP.equals(currentServerIP)) {
+            serverIP = currentServerIP;
+            init();
+        }
+
+        if(threadManager == null || queue.isEmpty()) return;
+        if(threadManager.getQueueSize() < threadManager.getPoolSize() * 2) {
+            threadManager.submit(queue.poll());
+        }
     }
 
     public void chunkToImageFiltered(Chunk chunk) {
-        if(chunk == null) {
-            return;
-        }
-
-        if(isChunkEmpty(chunk)) {
-            return;
-        }
-
+        if(chunk == null) return;
+        if(isChunkEmpty(chunk)) return;
         chunkToImage(chunk);
     }
 
@@ -64,22 +74,17 @@ public class ChunkImagerManager {
             default:
                 finalPath = null;
                 break;
+
         }
-        if(finalPath == null) return;
+
+        if(threadManager == null || finalPath == null) return;
         if(threadManager.getQueueSize() >= threadManager.getPoolSize() * 2) {
-            queue.add(new CImagerRunnable(finalPath, chunk));
+            final CImagerRunnable run = new CImagerRunnable(finalPath, chunk);
+            if (!queue.contains(run)) {
+                queue.add(run);
+            }
         } else {
             threadManager.submit(new CImagerRunnable(finalPath, chunk));
-        }
-    }
-
-    @EventListener
-    public void onTick(TickEvent event) {
-        if(mc.player == null || mc.world == null || threadManager == null) return;
-        if(threadManager.getQueueSize() < threadManager.getPoolSize() * 2) {
-            if(!queue.isEmpty()) {
-                threadManager.submit(queue.poll());
-            }
         }
     }
 
@@ -106,7 +111,12 @@ public class ChunkImagerManager {
         if(Files.exists(file.toPath())) {
             return file;
         } else {
+            chunkToImageFiltered(mc.world.getChunk(chunkX, chunkZ));
             return null;
         }
+    }
+
+    public int getQueueSize() {
+        return queue.size();
     }
 }

@@ -5,19 +5,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="71904ee0-803f-4d57-9c69-c9e77a77a07e" name="Changes" comment="1.1">
-      <change afterPath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/hacks/ChunkHashTest.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/hacks/MiniMap.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/huds/MiniMapElement.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/utils/ChunkUtils.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/events/CImageCompleteEvent.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/build.gradle" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/third/right/discordBotCLI/command/commands/QueryCmd.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/third/right/discordBotCLI/command/commands/QueryCmd.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/Main.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/Main.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/hacks/WorldDownloader.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/hacks/WorldDownloader.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/hacks/MiniMap.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/hacks/MiniMap.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/huds/MiniMapElement.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/huds/MiniMapElement.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/huds/PerformanceElement.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/huds/PerformanceElement.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/managers/ChunkImagerManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/managers/ChunkImagerManager.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/managers/DatabaseManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/managers/DatabaseManager.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/utils/AnvilChunkWDL.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/utils/AnvilChunkWDL.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/utils/CImagerRunnable.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/third/right/worldDownloader/utils/CImagerRunnable.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -111,7 +104,14 @@
       <option name="project" value="LOCAL" />
       <updated>1665866333002</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="1.1">
+      <created>1666132005749</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1666132005749</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">

@@ -11,7 +11,7 @@ import me.third.right.worldDownloader.hacks.WorldDownloader;
 import me.third.right.worldDownloader.huds.MiniMapElement;
 import me.third.right.worldDownloader.huds.PerformanceElement;
 
-@PluginBase.PluginInfo(name = "WorldDownloader", author = "ThirdRight", version = "1.1")
+@PluginBase.PluginInfo(name = "WorldDownloader", author = "ThirdRight", version = "1.2")
 public class Main extends PluginBase {
 
     public static Main INSTANCE;

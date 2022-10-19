@@ -1,7 +1,9 @@
 package me.third.right.worldDownloader.utils;
 
+import me.third.right.ThirdMod;
 import me.third.right.utils.client.utils.BlockUtils;
 import me.third.right.utils.client.utils.ChatUtils;
+import me.third.right.worldDownloader.events.CImageCompleteEvent;
 import me.third.right.worldDownloader.managers.PerformanceTracker;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockAir;
@@ -17,6 +19,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import static me.third.right.worldDownloader.utils.ChunkUtils.isChunkEmpty;
@@ -64,6 +67,7 @@ public class CImagerRunnable implements Runnable {
                     //TODO add Nether but split the chunk it layered segments.
                     //TODO Lighting.
                     //TODO add carpet colours.
+                    //TODO improve water shading / depth.
                     if(BlockUtils.isSolid(block)) {
                         MapColor mapColor = state.getMapColor(chunk.getWorld(), pos);
                         int colour = mapColor.colorValue;
@@ -124,10 +128,23 @@ public class CImagerRunnable implements Runnable {
             ChatUtils.error("Could not save map.");
         }
 
+        ThirdMod.EVENT_PROCESSOR.post(new CImageCompleteEvent(chunk.getPos()));
+
         stopWatch.stop();
         PerformanceTracker.addTime(stopWatch.getTime(TimeUnit.MILLISECONDS));
     }
 
+    @Override
+    public boolean equals(Object obj) {
+        return obj instanceof CImagerRunnable && obj.hashCode() == hashCode();
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(chunk.x) ^ Objects.hashCode(chunk.z);
+    }
+
+    //TODO move to main client colour class.
     private int darken(int colour, int amount) {
         int r = (colour >> 16) & 0xFF;
         int g = (colour >> 8) & 0xFF;

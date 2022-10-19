@@ -1,9 +1,11 @@
 package me.third.right.worldDownloader.huds;
 
-import me.third.right.ThirdMod;
 import me.third.right.hud.Hud;
-import me.third.right.utils.client.utils.ChatUtils;
+import me.third.right.utils.client.objects.Pair;
+import me.third.right.utils.client.utils.LoggerUtils;
+import me.third.right.utils.render.Render2D;
 import me.third.right.worldDownloader.hacks.MiniMap;
+import me.third.right.worldDownloader.managers.ChunkImagerManager;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.util.ResourceLocation;
@@ -13,27 +15,49 @@ import org.lwjgl.opengl.GL11;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.HashMap;
 
 @Hud.HudInfo(name = "MiniMap")
 public class MiniMapElement extends Hud {
+    public static MiniMapElement INSTANCE;
     private final MiniMap miniMap = MiniMap.INSTANCE;
+    private final ChunkImagerManager chunkImagerManager = miniMap.getChunkImagerManager();
     private int width = 16;
     private int height = 16;
-    private Path path = null;
-    private final HashMap<ChunkPos, ResourceLocation> chunkImageMap = new HashMap<>();
+    private final HashMap<ChunkPos, Pair<ResourceLocation, Boolean>> chunkImageMap = new HashMap<>();
 
     public MiniMapElement() {
+        INSTANCE = this;
         setRequirements(MiniMap.INSTANCE);
     }
 
     @Override
     public void onRender() {
-        if(mc.player == null || mc.world == null || path == null) return;
+        if(guiHud.nullCheckFull()) return;
 
+        Render2D.drawRect(getX() - (width * miniMap.getSize()) - 2,
+                getY() - (height * miniMap.getSize()) - 2,
+                getX() + (width * miniMap.getSize()) + 2,
+                getY() + (height * miniMap.getSize()) + 2,
+                miniMap.getColour()
+        );
+
+        if(miniMap.isOutline()) {
+            Render2D.drawOutlineRect(getX() - (width * miniMap.getSize()) - 1,
+                    getY() - (height * miniMap.getSize()) - 1,
+                    getX() + (width * miniMap.getSize()) + 1,
+                    getY() + (height * miniMap.getSize()) + 1,
+                    miniMap.getColourOutline(),
+                    1.2F
+            );
+        }
+
+        renderMap();
+    }
+
+    private void renderMap() {
         if(chunkImageMap.isEmpty()) return;
 
         for(int x = -miniMap.getSize(); x < miniMap.getSize(); x++) {
@@ -41,9 +65,11 @@ public class MiniMapElement extends Hud {
                 final BlockPos pos = mc.player.getPosition().add(x * 16, 0, z * 16);
                 final ChunkPos chunkPos = new ChunkPos(pos);
 
-                final ResourceLocation resourceLocation = chunkImageMap.get(chunkPos);
+                if(!chunkImageMap.containsKey(chunkPos)) continue;
+
+                final ResourceLocation resourceLocation = chunkImageMap.get(chunkPos).getFirst();
                 if (resourceLocation == null) {
-                    miniMap.getChunkImagerManager().chunkToImageFiltered(mc.world.getChunk(chunkPos.x, chunkPos.z));
+                    chunkImagerManager.chunkToImageFiltered(mc.world.getChunk(chunkPos.x, chunkPos.z));
                     continue;
                 }
 
@@ -60,14 +86,14 @@ public class MiniMapElement extends Hud {
                 GL11.glPopMatrix();
             }
         }
-
     }
+
 
     @Override
     public void onUpdate() {
-        final String serverIP = ChatUtils.getFormattedServerIP();
+        if(guiHud.nullCheckFull()) return;
 
-        int maxReads = 4;
+        int maxReads = 4;//TODO adjust this.
         int chunkDistance = miniMap.getSize() + 2;
 
         mc.addScheduledTask(this::cleanUp);
@@ -75,40 +101,19 @@ public class MiniMapElement extends Hud {
         for(int x = -chunkDistance; x < chunkDistance; x++) {
             for (int z = -chunkDistance; z < chunkDistance; z++) {
                 if(maxReads == 0) return;
-
-                final Path finalPath;
                 final BlockPos pos = mc.player.getPosition().add(x * 16, 0, z * 16);
                 final ChunkPos chunkPos = new ChunkPos(pos);
 
-                if(chunkImageMap.containsKey(chunkPos)) {
-                    continue;//TODO: check if image is up to date
-                }
-                switch (mc.player.dimension) {
-                    case 0:
-                        finalPath = ThirdMod.configFolder.resolve("ChunkImages").resolve(serverIP).resolve("Overworld").resolve(chunkPos.x + "," + chunkPos.z + ".png");
-                        break;
-                    case -1:
-                        finalPath = ThirdMod.configFolder.resolve("ChunkImages").resolve(serverIP).resolve("Nether").resolve(chunkPos.x + "," + chunkPos.z + ".png");
-                        break;
-                    case 1:
-                        finalPath = ThirdMod.configFolder.resolve("ChunkImages").resolve(serverIP).resolve("End").resolve(chunkPos.x + "," + chunkPos.z + ".png");
-                        break;
-                    default:
-                        finalPath = null;
-                        break;
-                }
-
-                path = finalPath;
-                if (path == null) {
+                if(chunkImageMap.containsKey(chunkPos) && !chunkImageMap.get(chunkPos).getSecond()) {
                     continue;
                 }
 
-                if (!Files.exists(path)) {
-                    miniMap.getChunkImagerManager().chunkToImageFiltered(mc.world.getChunk(chunkPos.x, chunkPos.z));
+                final File path = chunkImagerManager.getImage(chunkPos.x, chunkPos.z);
+                if(path == null) {
                     continue;
                 }
 
-                final BufferedImage bufferedImage = getImage(path.toFile(), ImageIO::read);
+                final BufferedImage bufferedImage = getImage(path, ImageIO::read);
                 if (bufferedImage == null) continue;
 
                 maxReads--;
@@ -118,7 +123,9 @@ public class MiniMapElement extends Hud {
                 } catch (IOException e) {
                     continue;
                 }
-                chunkImageMap.put(chunkPos, mc.getTextureManager().getDynamicTextureLocation(chunkPos.x + "," + chunkPos.z, dynamicTexture));
+
+                final Pair<ResourceLocation, Boolean> pair = new Pair<>(mc.getTextureManager().getDynamicTextureLocation("chunkImage", dynamicTexture), false);
+                chunkImageMap.put(chunkPos, pair);
             }
         }
     }
@@ -133,13 +140,19 @@ public class MiniMapElement extends Hud {
         reset();
     }
 
+    public void invalidateChunk(ChunkPos chunk) {
+        if(chunkImageMap.containsKey(chunk)) {
+            chunkImageMap.get(chunk).setSecond(true);
+        }
+    }
+
     private void cleanUp() {
         for(ChunkPos chunkPos : chunkImageMap.keySet()) {
             ChunkPos playerChunkPos = new ChunkPos(mc.player.getPosition());
             int xDiff = chunkPos.x - playerChunkPos.x;
             int zDiff = chunkPos.z - playerChunkPos.z;
             int distance = (int) Math.sqrt(xDiff * xDiff + zDiff * zDiff);
-            if(distance > (miniMap.getSize() + 2)) {
+            if(distance > (miniMap.getSize() + 4)) {
                 chunkImageMap.remove(chunkPos);
             }
         }
@@ -154,7 +167,7 @@ public class MiniMapElement extends Hud {
         try {
             return readFunction.apply(source);
         } catch (IOException ex) {
-            ex.printStackTrace();
+            LoggerUtils.logError(ex.toString());
             return null;
         }
     }
