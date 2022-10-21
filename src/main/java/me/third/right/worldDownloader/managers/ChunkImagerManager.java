@@ -2,6 +2,7 @@ package me.third.right.worldDownloader.managers;
 
 import me.third.right.ThirdMod;
 import me.third.right.utils.client.manage.ThreadManager;
+import me.third.right.utils.client.objects.Pair;
 import me.third.right.utils.client.utils.ChatUtils;
 import me.third.right.utils.client.utils.FileUtils;
 import me.third.right.worldDownloader.utils.CImagerRunnable;
@@ -21,7 +22,7 @@ public class ChunkImagerManager {
     protected ThreadManager threadManager;
     private String serverIP = "";
     private Path imagePathDir;
-    private final Queue<CImagerRunnable> queue = new ConcurrentLinkedQueue<>();
+    private final Queue<Pair<Path, Chunk>> queue = new ConcurrentLinkedQueue<>();
 
     public void init() {
         threadManager = ThreadManager.INSTANCE;
@@ -49,7 +50,11 @@ public class ChunkImagerManager {
 
         if(threadManager == null || queue.isEmpty()) return;
         if(threadManager.getQueueSize() < threadManager.getPoolSize() * 2) {
-            threadManager.submit(queue.poll());
+            Pair<Path, Chunk>[] pairs = new Pair[queue.size()];
+            for(int i = 0; i < pairs.length; i++) {
+                pairs[i] = queue.poll();
+            }
+            threadManager.submit(new CImagerRunnable(pairs));
         }
     }
 
@@ -79,12 +84,12 @@ public class ChunkImagerManager {
 
         if(threadManager == null || finalPath == null) return;
         if(threadManager.getQueueSize() >= threadManager.getPoolSize() * 2) {
-            final CImagerRunnable run = new CImagerRunnable(finalPath, chunk);
+            final Pair<Path, Chunk> run = new Pair<>(finalPath, chunk);
             if (!queue.contains(run)) {
                 queue.add(run);
             }
         } else {
-            threadManager.submit(new CImagerRunnable(finalPath, chunk));
+            threadManager.submit(new CImagerRunnable(new Pair<>(finalPath, chunk)));
         }
     }
 

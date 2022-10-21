@@ -1,15 +1,17 @@
 package me.third.right.worldDownloader.utils;
 
 import me.third.right.ThirdMod;
+import me.third.right.utils.client.objects.Pair;
 import me.third.right.utils.client.utils.BlockUtils;
 import me.third.right.utils.client.utils.ChatUtils;
 import me.third.right.worldDownloader.events.CImageCompleteEvent;
 import me.third.right.worldDownloader.managers.PerformanceTracker;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockAir;
-import net.minecraft.block.material.MapColor;
+import net.minecraft.block.BlockCarpet;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
+import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.chunk.Chunk;
 import org.apache.commons.lang3.time.StopWatch;
@@ -26,112 +28,124 @@ import static me.third.right.worldDownloader.utils.ChunkUtils.isChunkEmpty;
 
 public class CImagerRunnable implements Runnable {
     protected final Minecraft mc = Minecraft.getMinecraft();
-    private final Path finalPath;
-    private final Chunk chunk;
+    private final Pair<Path, Chunk>[] chunks;
 
-    public CImagerRunnable(Path finalPath, Chunk chunk) {
-        this.finalPath = finalPath;
-        this.chunk = chunk;
+    public CImagerRunnable(Pair<Path, Chunk>... chunks) {
+        this.chunks = chunks;
+    }
+
+    public CImagerRunnable(Pair<Path, Chunk> chunks) {
+        this.chunks = new Pair[]{chunks};
     }
 
     @Override
     public void run() {
         if(mc.player == null || mc.world == null) return;
 
-        if(chunk == null) {
-            return;
-        }
+        for(Pair<Path, Chunk> pair : chunks) {
+            final Chunk chunk = pair.getSecond();
+            if (chunk == null) {
+                return;
+            }
 
-        if(isChunkEmpty(chunk)) {
-            return;
-        }
+            if (isChunkEmpty(chunk)) {
+                return;
+            }
 
-        final StopWatch stopWatch = new StopWatch();
-        stopWatch.start();
+            final StopWatch stopWatch = new StopWatch();
+            stopWatch.start();
 
-        int lastY = -1;
-        File outfile = finalPath.toFile();
-        BufferedImage bufferedImage = new BufferedImage(16, 16, 2);
-        for(int x = 0; x < 16; x++) {
-            for(int z = 0; z < 16; z++) {
+            final File outfile = pair.getFirst().toFile();
+            final BufferedImage bufferedImage = new BufferedImage(16, 16, 2);
+            for (int x = 0; x < 16; x++) {
+                for (int z = 0; z < 16; z++) {
 
-                int skyY = 256;
-                while(skyY != 0) {
-                    BlockPos pos = new BlockPos(chunk.x * 16 + x, skyY, chunk.z * 16 + z);
-                    IBlockState state = mc.world.getBlockState(pos);
-                    Block block = state.getBlock();
-                    if(block instanceof BlockAir) {
-                        skyY--;
-                        continue;
-                    }
-                    //TODO add Nether but split the chunk it layered segments.
-                    //TODO Lighting.
-                    //TODO add carpet colours.
-                    //TODO improve water shading / depth.
-                    if(BlockUtils.isSolid(block)) {
-                        MapColor mapColor = state.getMapColor(chunk.getWorld(), pos);
-                        int colour = mapColor.colorValue;
-
-                        if (lastY != -1){
-                            int diff = lastY - skyY;
-                            colour = darken(colour, Math.max(0, Math.min(diff * 10, 60)));
+                    int skyY = 256;
+                    while (skyY != 0) {
+                        BlockPos pos = new BlockPos(chunk.x * 16 + x, skyY, chunk.z * 16 + z);
+                        IBlockState state = mc.world.getBlockState(pos);
+                        Block block = state.getBlock();
+                        if (block instanceof BlockAir) {
+                            skyY--;
+                            continue;
                         }
+                        //TODO add Nether but split the chunk it layered segments.
 
-                        bufferedImage.setRGB(x, z, colour | 254 << 24);//Set to block map colour.
-                        lastY = skyY;
-                        break;
-                    } else if(BlockUtils.isLiquid(block)) {
-                        int colourBlend = state.getMapColor(chunk.getWorld(), pos).colorValue;
-                        if(skyY <= 1) {
-                            bufferedImage.setRGB(x, z, colourBlend | 254 << 24);//Set to liquid colour if there is only one block below.
+                        if (BlockUtils.isSolid(block) || block instanceof BlockCarpet) {
+                            int colour = state.getMapColor(chunk.getWorld(), pos).colorValue;
+
+                            int searchDepth = 10;
+                            int newY = skyY + 1;
+                            while (searchDepth != 0) {
+                                BlockPos pos2 = new BlockPos(chunk.x * 16 + x, newY, chunk.z * 16 + z).add(EnumFacing.NORTH.getDirectionVec());
+                                IBlockState state2 = mc.world.getBlockState(pos2);
+                                Block block2 = state2.getBlock();
+
+                                if (block2 instanceof BlockAir) {
+                                    break;
+                                } else {
+                                    colour = darken(colour, 15);//Darken the colour.
+                                    newY++;
+                                    searchDepth--;
+                                }
+                            }
+
+                            bufferedImage.setRGB(x, z, colour | 255 << 24);//Set to block map colour.
                             break;
-                        }
-
-                        int searchDepth = 5;
-                        int newY = skyY;
-                        while(searchDepth != 0) {
-                            BlockPos pos2 = new BlockPos(chunk.x * 16 + x, newY, chunk.z * 16 + z);
-                            IBlockState state2 = mc.world.getBlockState(pos2);
-                            Block block2 = state2.getBlock();
-                            if(block2 instanceof BlockAir) {
-                                newY--;
-                                searchDepth--;
-                                continue;
-                            }
-
-                            if(BlockUtils.isSolid(block2)) {
-                                colourBlend = blendColour(colourBlend, state2.getMapColor(chunk.getWorld(), pos2).colorValue);//Blend the colour with the block below.
+                        } else if (BlockUtils.isLiquid(block)) {
+                            int colourBlend = state.getMapColor(chunk.getWorld(), pos).colorValue;
+                            if (skyY <= 1) {
+                                bufferedImage.setRGB(x, z, colourBlend | 255 << 24);//Set to liquid colour if there is only one block below.
                                 break;
-                            } else if(BlockUtils.isLiquid(block2)) {
-                                colourBlend = darken(colourBlend, 30);//Darken the colour.
-                                newY--;
-                                searchDepth--;
                             }
+
+                            int searchDepth = 10;
+                            int newY = skyY;
+                            while (searchDepth != 0) {
+                                BlockPos pos2 = new BlockPos(chunk.x * 16 + x, newY, chunk.z * 16 + z);
+                                IBlockState state2 = mc.world.getBlockState(pos2);
+                                Block block2 = state2.getBlock();
+                                if (block2 instanceof BlockAir) {
+                                    newY--;
+                                    searchDepth--;
+                                    continue;
+                                }
+
+                                if (BlockUtils.isSolid(block2)) {
+                                    colourBlend = blendColour(colourBlend, state2.getMapColor(chunk.getWorld(), pos2).colorValue);//Blend the colour with the block below.
+                                    break;
+                                } else if (BlockUtils.isLiquid(block2)) {
+                                    colourBlend = darken(colourBlend, 3);//Darken the colour.
+                                    newY--;
+                                    searchDepth--;
+                                }
+                            }
+
+                            bufferedImage.setRGB(x, z, colourBlend | 255 << 24);//Set to liquid colour if there is only one block below.
+                            break;
+                        } else {
+                            skyY--;
                         }
-
-                        bufferedImage.setRGB(x, z, colourBlend | 254 << 24);//Set to liquid colour if there is only one block below.
-                        break;
-                    } else {
-                        skyY--;
                     }
-                }
 
-                if(skyY == 0) {
-                    bufferedImage.setRGB(x, z, -16777216);//Set to black
+                    if (skyY == 0) {
+                        bufferedImage.setRGB(x, z, -16777216);//Set to black
+                    }
                 }
             }
+
+            try {
+                ImageIO.write(bufferedImage, "png", outfile);
+            } catch (IOException var5) {
+                ChatUtils.error("Failed to save ChunkImage...");
+            }
+
+
+            ThirdMod.EVENT_PROCESSOR.post(new CImageCompleteEvent(chunk.getPos()));
+
+            stopWatch.stop();
+            PerformanceTracker.addTime(stopWatch.getTime(TimeUnit.MILLISECONDS));
         }
-
-        try {
-            ImageIO.write(bufferedImage, "png", outfile);
-        } catch (IOException var5) {
-            ChatUtils.error("Could not save map.");
-        }
-
-        ThirdMod.EVENT_PROCESSOR.post(new CImageCompleteEvent(chunk.getPos()));
-
-        stopWatch.stop();
-        PerformanceTracker.addTime(stopWatch.getTime(TimeUnit.MILLISECONDS));
     }
 
     @Override
@@ -141,7 +155,11 @@ public class CImagerRunnable implements Runnable {
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(chunk.x) ^ Objects.hashCode(chunk.z);
+        int hash = 0;
+        for(Pair<Path, Chunk> chunk : chunks) {
+            hash += Objects.hashCode(chunk.getSecond().x) ^ Objects.hashCode(chunk.getSecond().z);
+        }
+        return hash;
     }
 
     //TODO move to main client colour class.

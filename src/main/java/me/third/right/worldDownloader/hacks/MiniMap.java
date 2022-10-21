@@ -2,22 +2,24 @@ package me.third.right.worldDownloader.hacks;
 
 import me.bush.eventbus.annotation.EventListener;
 import me.third.right.ThirdMod;
+import me.third.right.events.client.DisconnectEvent;
 import me.third.right.events.client.PacketEvent;
 import me.third.right.events.client.TickEvent;
+import me.third.right.events.player.DimensionChangeEvent;
 import me.third.right.modules.Hack;
 import me.third.right.settings.setting.CheckboxSetting;
+import me.third.right.settings.setting.EnumSetting;
 import me.third.right.settings.setting.SliderSetting;
 import me.third.right.utils.client.enums.Category;
+import me.third.right.utils.client.manage.ThreadManager;
 import me.third.right.worldDownloader.events.CImageCompleteEvent;
 import me.third.right.worldDownloader.huds.MiniMapElement;
 import me.third.right.worldDownloader.managers.ChunkImagerManager;
 import net.minecraft.network.play.server.SPacketBlockChange;
 import net.minecraft.network.play.server.SPacketChunkData;
-import net.minecraft.network.play.server.SPacketMultiBlockChange;
 import net.minecraft.world.chunk.Chunk;
 
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import javax.imageio.ImageIO;
 
 import static me.third.right.utils.client.utils.ColourUtils.rgbToInt;
 import static me.third.right.worldDownloader.utils.ChunkUtils.isChunkEmpty;
@@ -27,21 +29,30 @@ public class MiniMap extends Hack {
     //Vars
     public static MiniMap INSTANCE;
     private final ChunkImagerManager chunkImagerManager = new ChunkImagerManager();
-
+    private enum Page { Render, Structures }
     //Settings
-    private final SliderSetting size = setting(new SliderSetting("Size", 4,1,10,1, SliderSetting.ValueDisplay.INTEGER));
-    private final SliderSetting red = setting(new SliderSetting("Red", 0,0,255,1, SliderSetting.ValueDisplay.INTEGER));
-    private final SliderSetting green = setting(new SliderSetting("Green", 0,0,255,1, SliderSetting.ValueDisplay.INTEGER));
-    private final SliderSetting blue = setting(new SliderSetting("Blue", 0,0,255,1, SliderSetting.ValueDisplay.INTEGER));
-    private final SliderSetting alpha = setting(new SliderSetting("Alpha", 255,0,255,1, SliderSetting.ValueDisplay.INTEGER));
-    private final CheckboxSetting outline = setting(new CheckboxSetting("Outline", true));
-    private final SliderSetting redOutline = setting(new SliderSetting("RedOutline", 255,0,255,1, SliderSetting.ValueDisplay.INTEGER));
-    private final SliderSetting greenOutline = setting(new SliderSetting("GreenOutline", 0,0,255,1, SliderSetting.ValueDisplay.INTEGER));
-    private final SliderSetting blueOutline = setting(new SliderSetting("BlueOutline", 255,0,255,1, SliderSetting.ValueDisplay.INTEGER));
-    private final SliderSetting alphaOutline = setting(new SliderSetting("AlphaOutline", 255,0,255,1, SliderSetting.ValueDisplay.INTEGER));
+    private final EnumSetting<Page> page = setting(new EnumSetting<>("Page", Page.values(), Page.Render));
+    // * Render
+    private final SliderSetting scale = setting(new SliderSetting("Scale", 0.5,0.1,1,0.1, SliderSetting.ValueDisplay.DECIMAL, X -> !page.getSelected().equals(Page.Render)));
+    private final SliderSetting renderDistance = setting(new SliderSetting("RenderDistance", 4,1,15,1, SliderSetting.ValueDisplay.INTEGER, X -> !page.getSelected().equals(Page.Render)));
+    //private final CheckboxSetting rotate = setting(new CheckboxSetting("Rotate", false, X -> !page.getSelected().equals(Page.Render)));
+    private final SliderSetting red = setting(new SliderSetting("Red", 0,0,255,1, SliderSetting.ValueDisplay.INTEGER, X -> !page.getSelected().equals(Page.Render)));
+    private final SliderSetting green = setting(new SliderSetting("Green", 0,0,255,1, SliderSetting.ValueDisplay.INTEGER, X -> !page.getSelected().equals(Page.Render)));
+    private final SliderSetting blue = setting(new SliderSetting("Blue", 0,0,255,1, SliderSetting.ValueDisplay.INTEGER, X -> !page.getSelected().equals(Page.Render)));
+    private final SliderSetting alpha = setting(new SliderSetting("Alpha", 255,0,255,1, SliderSetting.ValueDisplay.INTEGER, X -> !page.getSelected().equals(Page.Render)));
+    private final CheckboxSetting outline = setting(new CheckboxSetting("Outline", true, X -> !page.getSelected().equals(Page.Render)));
+    private final SliderSetting redOutline = setting(new SliderSetting("RedOutline", 255,0,255,1, SliderSetting.ValueDisplay.INTEGER, X -> !outline.isChecked() || !page.getSelected().equals(Page.Render)));
+    private final SliderSetting greenOutline = setting(new SliderSetting("GreenOutline", 0,0,255,1, SliderSetting.ValueDisplay.INTEGER, X -> !outline.isChecked() || !page.getSelected().equals(Page.Render)));
+    private final SliderSetting blueOutline = setting(new SliderSetting("BlueOutline", 255,0,255,1, SliderSetting.ValueDisplay.INTEGER, X -> !outline.isChecked() || !page.getSelected().equals(Page.Render)));
+    private final SliderSetting alphaOutline = setting(new SliderSetting("AlphaOutline", 255,0,255,1, SliderSetting.ValueDisplay.INTEGER, X -> !outline.isChecked() || !page.getSelected().equals(Page.Render)));
+    // * Structures
+    private final CheckboxSetting showSlimeChunks = setting(new CheckboxSetting("ShowSlimeChunks", false, X -> !page.getSelected().equals(Page.Structures)));
+    private final CheckboxSetting showWaypoints = setting(new CheckboxSetting("ShowWaypoints", false, X -> !page.getSelected().equals(Page.Structures)));
+    private final CheckboxSetting showUpdates = setting(new CheckboxSetting("ShowUpdates", false, X -> !page.getSelected().equals(Page.Structures)));
 
     public MiniMap() {
         INSTANCE = this;
+        ImageIO.setUseCache(false);
     }
 
     @Override
@@ -66,6 +77,8 @@ public class MiniMap extends Hack {
     public void onPacketReceive(PacketEvent.Receive event) {
         if(nullCheckFull() || event.getPacket() == null) return;
 
+        if(ThreadManager.INSTANCE == null) return;
+
         if(event.getPacket() instanceof SPacketChunkData) {
             final SPacketChunkData packet = (SPacketChunkData) event.getPacket();
 
@@ -82,26 +95,6 @@ public class MiniMap extends Hack {
             if(isChunkEmpty(chunk)) return;
             chunkImagerManager.chunkToImageFiltered(chunk);
 
-        } else if(event.getPacket() instanceof SPacketMultiBlockChange) {
-            final SPacketMultiBlockChange packet = (SPacketMultiBlockChange) event.getPacket();
-
-            if(packet.getChangedBlocks().length != 0) {
-                final Queue<Chunk> chunks = new ConcurrentLinkedQueue<>();
-                for (SPacketMultiBlockChange.BlockUpdateData data : packet.getChangedBlocks()) {
-                    final Chunk chunk = mc.world.getChunk(data.getPos());
-
-                    if (isChunkEmpty(chunk)) continue;
-
-                    if (chunks.contains(chunk)) continue;
-                    chunks.add(chunk);
-                }
-
-                while (!chunks.isEmpty()) {
-                    final Chunk chunk = chunks.poll();
-
-                    chunkImagerManager.chunkToImageFiltered(chunk);
-                }
-            }
         }
     }
 
@@ -109,6 +102,16 @@ public class MiniMap extends Hack {
     public void onRenderComplete(CImageCompleteEvent event) {
         if(nullCheckFull()) return;
         MiniMapElement.INSTANCE.invalidateChunk(event.getChunkPos());
+    }
+
+    @EventListener
+    public void onDimChange(DimensionChangeEvent event) {
+        MiniMapElement.INSTANCE.reset();
+    }
+
+    @EventListener
+    public void onDisconnect(DisconnectEvent event) {
+        MiniMapElement.INSTANCE.reset();
     }
 
     public int getColour() {
@@ -123,7 +126,21 @@ public class MiniMap extends Hack {
         return outline.isChecked();
     }
 
+    public boolean isSlimeChunks() {
+        return showSlimeChunks.isChecked();
+    }
+
+    public boolean isWaypoints() {
+        return showWaypoints.isChecked();
+    }
+
+    public boolean isShowUpdates() {
+        return showUpdates.isChecked();
+    }
+
     public ChunkImagerManager getChunkImagerManager() {return chunkImagerManager;}
 
-    public int getSize() {return size.getValueI();}
+    public int getRenderDistance() {return renderDistance.getValueI();}
+
+    public double getScale() {return scale.getValue();}
 }

@@ -6,6 +6,7 @@ import net.minecraft.world.chunk.EmptyChunk;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 
 import java.util.Objects;
+import java.util.Random;
 
 import static net.minecraft.world.chunk.Chunk.NULL_BLOCK_STORAGE;
 
@@ -57,5 +58,12 @@ public class ChunkUtils {//TODO move this to main client in version 4.5
         }
 
         return hash;
+    }
+
+
+    //https://minecraft.fandom.com/wiki/Slime
+    public static boolean isSlimeChunk(long seed, int chunkX, int chunkZ) {
+        final Random r = new Random(seed + ((long) chunkX * chunkX * 4987142) + (chunkX * 5947611L) + ((long) chunkZ * chunkZ) * 4392871L + (chunkZ * 389711L) ^ 987234911L);
+        return r.nextInt(10) == 0;
     }
 }
