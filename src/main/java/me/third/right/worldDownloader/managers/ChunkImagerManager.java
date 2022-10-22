@@ -18,11 +18,13 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import static me.third.right.worldDownloader.utils.ChunkUtils.isChunkEmpty;
 
 public class ChunkImagerManager {
-    protected Minecraft mc = Minecraft.getMinecraft();
+    protected final Minecraft mc = Minecraft.getMinecraft();
+    private final Queue<Pair<Path, Chunk>> queue = new ConcurrentLinkedQueue<>();
     protected ThreadManager threadManager;
     private String serverIP = "";
     private Path imagePathDir;
-    private final Queue<Pair<Path, Chunk>> queue = new ConcurrentLinkedQueue<>();
+    private boolean isReady = false;
+
 
     public void init() {
         threadManager = ThreadManager.INSTANCE;
@@ -35,6 +37,7 @@ public class ChunkImagerManager {
                 imagePathDir.resolve(serverIP).resolve("End")
         );
         queue.clear();
+        isReady = true;
     }
 
     public void onTick() {
@@ -123,5 +126,13 @@ public class ChunkImagerManager {
 
     public int getQueueSize() {
         return queue.size();
+    }
+
+    public boolean isReady() {
+        return isReady;
+    }
+
+    public void setReady(boolean ready) {
+        isReady = ready;
     }
 }

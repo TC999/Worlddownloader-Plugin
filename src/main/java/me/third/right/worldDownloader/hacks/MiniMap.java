@@ -79,6 +79,8 @@ public class MiniMap extends Hack {
 
         if(ThreadManager.INSTANCE == null) return;
 
+        if(!chunkImagerManager.isReady()) return;
+
         if(event.getPacket() instanceof SPacketChunkData) {
             final SPacketChunkData packet = (SPacketChunkData) event.getPacket();
 

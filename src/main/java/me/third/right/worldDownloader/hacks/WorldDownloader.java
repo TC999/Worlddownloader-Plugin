@@ -104,6 +104,10 @@ public class WorldDownloader extends HackStandard {
         }
 
         maxChunks = (mc.gameSettings.renderDistanceChunks * 16) / 4;
+
+        if(isDownloading && databaseManager != null) {
+            databaseManager.onTick();
+        }
     }
 
     @EventListener
@@ -140,6 +144,9 @@ public class WorldDownloader extends HackStandard {
         saveHandler = (SaveHandler) mc.getSaveLoader().getSaveLoader(getWorldName(), true);
         anvilChunkWDL = AnvilChunkWDL.create(saveHandler, mc.world.provider);
         System.gc();
+        System.runFinalization();
+        System.gc();
+        System.runFinalization();
     }
 
     public void stopDownload() {//TODO add a first time check create all the player data in the world folder then downloader and update the player data when stopped properly.

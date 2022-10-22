@@ -6,6 +6,7 @@ import me.third.right.ThirdMod;
 import me.third.right.utils.client.objects.Pair;
 import me.third.right.utils.client.utils.ChatUtils;
 import me.third.right.utils.client.utils.LoggerUtils;
+import me.third.right.worldDownloader.utils.ChunkUtils;
 import me.third.right.worldDownloader.utils.ValueStore;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockAir;
@@ -19,10 +20,12 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 public class DatabaseManager {
-    protected Minecraft mc = Minecraft.getMinecraft();
+    protected final Minecraft mc = Minecraft.getMinecraft();
     private final String databaseName;
     private final DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
     private final PersistentEntityStore entityStore;
+    private final Queue<Pair<Integer, Integer>> chunkHistory = new LinkedList<>();
+    private final Queue<Integer> newChunkHistory = new LinkedList<>();
     private boolean isClosing = false;
 
     public DatabaseManager(String databaseName) {
@@ -35,10 +38,28 @@ public class DatabaseManager {
         entityStore = PersistentEntityStores.newInstance(ThirdMod.configFolder.resolve("WorldDatabase").resolve(databaseName).toFile());
     }
 
+    public void onTick() {
+        if(chunkHistory.size() > 400) {
+            chunkHistory.clear();
+        }
+
+        if(newChunkHistory.size() > 400) {
+            newChunkHistory.clear();
+        }
+    }
+
     public void storeChunkInfo(Chunk chunk) {//TODO add Hash checks to see if the chunk has changed if not then don't store it.
         if(isClosing) return;
         StoreTransaction transaction = entityStore.beginTransaction();
         final int id = Objects.hashCode(chunk.x) ^ Objects.hashCode(chunk.z);
+        final int hash = ChunkUtils.createChunkHash(chunk);
+
+        final Pair<Integer, Integer> histEntry = new Pair<>(id, hash);
+        if(chunkHistory.contains(histEntry)) {
+            transaction.abort();
+            return;
+        }
+
         //Block Counts
         try {
             do {
@@ -66,6 +87,7 @@ public class DatabaseManager {
                 entity.setProperty("chunkZ", chunk.z);
                 entity.setProperty("date", dtf.format(LocalDateTime.now()));
                 entity.setProperty("dimension", mc.player.dimension);
+                entity.setProperty("hash", hash);
 
                 //#name:count@x,y,z|x,y,z
                 //Split by # then by : then by @ then by ,
@@ -85,6 +107,7 @@ public class DatabaseManager {
                 }
             } while (!transaction.flush());
         } finally {
+            chunkHistory.add(histEntry);
             if(transaction != null) {
                 transaction.abort();
             }
@@ -121,20 +144,29 @@ public class DatabaseManager {
     public void storeNewChunk(int x, int z) {//TODO change chunk location to chunkX and chunkZ instead of x and z
         if(isClosing) return;
         StoreTransaction transaction = entityStore.beginTransaction();
+        final int id = Objects.hashCode(x) ^ Objects.hashCode(z);
+
+        if(newChunkHistory.contains(id)) {
+            transaction.abort();
+            return;
+        }
+
         try {
             do {
                 final Entity newChunk = transaction.newEntity("NewChunk");
-                newChunk.setProperty("id", Objects.hashCode(x) ^ Objects.hashCode(z));
-                newChunk.setProperty("x", x);
-                newChunk.setProperty("z", z);
+                newChunk.setProperty("id", id);
+                newChunk.setProperty("chunkX", x);
+                newChunk.setProperty("chunkZ", z);
                 newChunk.setProperty("dimension", mc.player.dimension);
                 newChunk.setProperty("date", dtf.format(LocalDateTime.now()));
+
                 if(transaction != entityStore.getCurrentTransaction()) {
                     transaction = null;
                     break;
                 }
             } while (!transaction.flush());
         } finally {
+            newChunkHistory.add(id);
             if(transaction != null) {
                 transaction.abort();
             }
