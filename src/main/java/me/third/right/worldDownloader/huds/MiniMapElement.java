@@ -123,7 +123,7 @@ public class MiniMapElement extends Hud {
              }
         }
 
-        if(!miniMap.isWaypoints() || !waypoints.isEnabled()) return;
+        if(!miniMap.isWaypoints()) return;
 
         final ChunkPos chunkPos = new ChunkPos(mc.player.getPosition());
         final String server = ChatUtils.getFormattedServerIP();

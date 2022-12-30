@@ -138,7 +138,7 @@ public class WorldDownloader extends HackStandard {
             databaseManager.disconnect();
             databaseManager = null;
         }
-        databaseManager = new DatabaseManager(serverIP);
+        //databaseManager = new DatabaseManager(serverIP);
         newChunks = 0;
         serverIP = ChatUtils.getFormattedServerIP();
         saveHandler = (SaveHandler) mc.getSaveLoader().getSaveLoader(getWorldName(), true);

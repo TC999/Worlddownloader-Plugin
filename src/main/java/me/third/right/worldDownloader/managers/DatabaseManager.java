@@ -14,6 +14,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.chunk.Chunk;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Range;
 
 import java.math.BigInteger;
 import java.time.LocalDateTime;
@@ -26,8 +27,8 @@ public class DatabaseManager {
     private final String databaseName;
     private final DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
     private final PersistentEntityStore entityStore;
-    private final Queue<Pair<Integer, Integer>> chunkHistory = new LinkedList<>();
-    private final Queue<Integer> newChunkHistory = new LinkedList<>();
+    private final List<Pair<Integer, Integer>> chunkHistory = new LinkedList<>();
+    private final List<Integer> newChunkHistory = new LinkedList<>();
     private boolean isClosing = false;
 
     public DatabaseManager(String databaseName) {
@@ -42,17 +43,13 @@ public class DatabaseManager {
 
     public void onTick() {
         if(chunkHistory.size() > 400) {
-            Collections.reverse((List<?>) chunkHistory);
-            for(int i = 0; i < 300; i++) {
-                chunkHistory.remove();
-            }
+            Collections.reverse(chunkHistory);
+            chunkHistory.subList(0, 300).clear();
         }
 
         if(newChunkHistory.size() > 400) {
-            Collections.reverse((List<?>) newChunkHistory);
-            for(int i = 0; i < 300; i++) {
-                newChunkHistory.remove();
-            }
+            Collections.reverse(newChunkHistory);
+            newChunkHistory.subList(0, 300).clear();
         }
     }
 
@@ -98,8 +95,8 @@ public class DatabaseManager {
                 }
             }
             entity.setProperty("blocks", blockString.toString());
-
         });
+        entityStore.close();
     }
 
     public long getBlockCount() {
